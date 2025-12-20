@@ -1,6 +1,7 @@
 {
   "timer": {
     "description": "Wait Time",
-    "type": "float"
+    "type": "float",
+    "default": 4.0 
   }
 }
