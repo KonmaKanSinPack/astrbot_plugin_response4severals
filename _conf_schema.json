@@ -1,6 +1,6 @@
 {
   "timer": {
-    "description": "Wait Time",
+    "description": "每次消息后等待的时间（秒）。",
     "type": "float",
     "default": 4.0 
   }
