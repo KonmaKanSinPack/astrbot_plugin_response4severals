@@ -1,8 +1,10 @@
-# helloworld
+# 更灵活地回复
 
-AstrBot 插件模板
+让bot不再收到一句回一句，而是可以一次对连续的几条信息做出回复
 
-A template plugin for AstrBot plugin feature
+__参数__
+```
+--timer 每次收到消息后的等待时间 
 
 # 支持
 
