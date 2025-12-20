@@ -10,7 +10,7 @@ from astrbot.core.utils.session_waiter import (
 # import asyncio
 from astrbot.api.event import MessageChain
 from astrbot.api import AstrBotConfig
-@register("astrbot_plugin_betterchat", "兔子", "更好的聊天。", "v1.0.0")
+@register("astrbot_plugin_chat4severals", "兔子", "更好的聊天。", "v1.0.0")
 class Chat4severals_Plugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
