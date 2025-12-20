@@ -48,11 +48,12 @@ class Chat4severals_Plugin(Star):
                 # self._ready_event.set()
                 self.is_listening = False
                 event.message_str=self.hole_msgs
+                self.hole_msgs = ""
             except Exception as e:
                 yield event.plain_result("发生内部错误，请联系管理员: " + str(e))
             finally:
                 self.is_listening = False
-                # event.stop_event()
+                event.stop_event()
         except Exception as e:
             yield event.plain_result("发生错误，请联系管理员: " + str(e))
 
