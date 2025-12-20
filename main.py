@@ -14,11 +14,8 @@ from astrbot.api import AstrBotConfig
 class Chat4severals_Plugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
-        # self.is_listening = asyncio.Lock()
         self.is_listening = False
-        self.hole_msgs = ""
-        self.iswaitting = False
-        # self._ready_event = asyncio.Event()
+        self.whole_msgs = ""
         self.config = config
         
 
@@ -37,18 +34,18 @@ class Chat4severals_Plugin(Star):
             @session_waiter(timeout=timer, record_history_chains=False)
             async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
                 cur_msg = event.message_str
-                self.hole_msgs += f"{cur_msg}\n"
+                self.whole_msgs += f"{cur_msg}\n"
                 controller.keep(timeout=timer, reset_timeout=True)
             try:
                 await wait_for_response(event)
             except TimeoutError:
                 logger.info("No more messages received within timeout.")
-                logger.info(f"Collected messages:{self.hole_msgs}")
+                logger.info(f"Collected messages:{self.whole_msgs}")
                 # message_chain = MessageChain().message(self.hole_msgs)
                 # self._ready_event.set()
                 self.is_listening = False
-                event.message_str=self.hole_msgs
-                self.hole_msgs = ""
+                event.message_str=self.whole_msgs
+                self.whole_msgs = ""
             except Exception as e:
                 yield event.plain_result("发生内部错误，请联系管理员: " + str(e))
             finally:
