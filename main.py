@@ -19,6 +19,7 @@ class Chat4severals_Plugin(Star):
         self.hole_msgs = ""
         self.iswaitting = False
         self._ready_event = asyncio.Event()
+        self.config = config
         self.timer = self.config.get("timer", 4.0)
 
     async def initialize(self):
