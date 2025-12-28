@@ -33,7 +33,14 @@ class Chat4severals_Plugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
     async def on_all_message(self, event: AstrMessageEvent):
-        session_key, state = self._get_session_state(event)
+        
+        session_key = event.get_sender_name()
+        state = self._session_states.get(session_key)
+        if state is None:
+            state = _SessionState()
+            self._session_states[session_key] = state
+
+        logger.info(f"得到state:{state}")
         if state.is_listening:
             logger.info(
                 "会话 %s 正在收集消息，忽略并发请求。",
@@ -49,6 +56,7 @@ class Chat4severals_Plugin(Star):
                 state.buffer.append(cur_msg)
                 logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
                 controller.keep(timeout=timer, reset_timeout=True)
+                
             try:
                 await wait_for_response(event)
             except TimeoutError:
