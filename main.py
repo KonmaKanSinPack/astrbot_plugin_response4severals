@@ -18,7 +18,8 @@ from astrbot.api import AstrBotConfig
 @dataclass
 class _SessionState:
     is_listening: bool = False
-    buffer: List[str] = field(default_factory=list)
+    # buffer: List[str] = field(default_factory=list)
+    buffer = ""
 
 @register("astrbot_plugin_chat4severals", "兔子", "更好的聊天。", "v1.0.0")
 class Chat4severals_Plugin(Star):
@@ -53,7 +54,8 @@ class Chat4severals_Plugin(Star):
             @session_waiter(timeout=timer, record_history_chains=False)
             async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
                 cur_msg = event.message_str
-                state.buffer.append(cur_msg)
+                # state.buffer.append(cur_msg)
+                state.buffer = state.buffer + f"\n{cur_msg}"
                 logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
                 controller.keep(timeout=timer, reset_timeout=True)
                 
@@ -61,10 +63,11 @@ class Chat4severals_Plugin(Star):
                 await wait_for_response(event)
             except TimeoutError:
                 logger.info("No more messages received within timeout.")
-                collected = "\n".join(state.buffer)
+                # collected = "\n".join(state.buffer)
+                collected = state.buffer
                 logger.info("Collected messages for %s: %s", session_key, collected)
                 event.message_str = collected
-                state.buffer.clear()
+                state.buffer = ""
             except Exception as e:
                 yield event.plain_result("发生内部错误，请联系管理员: " + str(e))
             finally:
