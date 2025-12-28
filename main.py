@@ -82,8 +82,9 @@ class Chat4severals_Plugin(Star):
     @staticmethod
     def _resolve_session_key(event: AstrMessageEvent) -> str:
         """优先使用统一会话标识，否则退化为消息 ID。"""
-        for attr in ("unified_msg_origin", "session_id", "user_id", "message_id"):
-            value = getattr(event, attr, None)
-            if value:
-                return str(value)
+        return event.get_sender_name()
+        # for attr in ("unified_msg_origin", "session_id", "user_id", "message_id"):
+        #     value = getattr(event, attr, None)
+        #     if value:
+        #         return str(value)
         return f"fallback-session-{id(event)}"
