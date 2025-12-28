@@ -60,6 +60,7 @@ class Chat4severals_Plugin(Star):
                 controller.keep(timeout=timer, reset_timeout=True)
                 
             try:
+                state.buffer = event.message_str  # 或 append 到列表
                 await wait_for_response(event)
             except TimeoutError:
                 logger.info("No more messages received within timeout.")
