@@ -47,6 +47,7 @@ class Chat4severals_Plugin(Star):
             async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
                 cur_msg = event.message_str
                 state.buffer.append(cur_msg)
+                logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
                 controller.keep(timeout=timer, reset_timeout=True)
             try:
                 await wait_for_response(event)
@@ -72,19 +73,19 @@ class Chat4severals_Plugin(Star):
 
     def _get_session_state(self, event: AstrMessageEvent):
         """确保每个用户会话拥有独立的缓存状态。"""
-        session_key = self._resolve_session_key(event)
+        session_key = event.get_sender_name()
         state = self._session_states.get(session_key)
         if state is None:
             state = _SessionState()
             self._session_states[session_key] = state
         return session_key, state
 
-    @staticmethod
-    def _resolve_session_key(event: AstrMessageEvent) -> str:
-        """优先使用统一会话标识，否则退化为消息 ID。"""
-        return event.get_sender_name()
-        # for attr in ("unified_msg_origin", "session_id", "user_id", "message_id"):
-        #     value = getattr(event, attr, None)
-        #     if value:
-        #         return str(value)
-        return f"fallback-session-{id(event)}"
+    # @staticmethod
+    # def _resolve_session_key(event: AstrMessageEvent) -> str:
+    #     """优先使用统一会话标识，否则退化为消息 ID。"""
+    #     return event.get_sender_name()
+    #     # for attr in ("unified_msg_origin", "session_id", "user_id", "message_id"):
+    #     #     value = getattr(event, attr, None)
+    #     #     if value:
+    #     #         return str(value)
+    #     return f"fallback-session-{id(event)}"
