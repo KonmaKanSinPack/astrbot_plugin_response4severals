@@ -127,7 +127,7 @@ class Chat4severals_Plugin(Star):
                 content=[TextPart(text=llm_resp.completion_text)]
             ),
         )
-        message_chain = MessageChain().message(TextPart(text=llm_resp.completion_text))
+        message_chain = MessageChain().message(llm_resp.completion_text)
         await self.context.send_message(uid, message_chain)
         # yield event.plain_result(TextPart(text=llm_resp.completion_text))
 
