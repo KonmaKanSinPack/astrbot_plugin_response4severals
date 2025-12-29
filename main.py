@@ -128,7 +128,7 @@ class Chat4severals_Plugin(Star):
             ),
         )
         message_chain = MessageChain().message(TextPart(text=llm_resp.completion_text))
-        await self.context.send_message(event.unified_msg_origin, message_chain)
+        await self.context.send_message(uid, message_chain)
         # yield event.plain_result(TextPart(text=llm_resp.completion_text))
 
     async def get_persona_system_prompt(self, session: str) -> str:
