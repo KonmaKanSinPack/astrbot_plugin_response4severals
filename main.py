@@ -97,12 +97,12 @@ class Chat4severals_Plugin(Star):
         conversation = await conv_mgr.get_conversation(uid, curr_cid)  # Conversation
         history = json.loads(conversation.history) if conversation and conversation.history else []
         # 验证历史记录格式
-        logger.info(f"原始历史记录:{history}")
-        valid_history = []
-        for item in history:
-            if isinstance(item, dict) and "role" in item and "content" in item:
-                if isinstance(item["content"], str):
-                    valid_history.append(item)
+        # logger.info(f"原始历史记录:{history}")
+        # valid_history = []
+        # for item in history:
+        #     if isinstance(item, dict) and "role" in item and "content" in item:
+        #         if isinstance(item["content"], str):
+        #             valid_history.append(item)
 
         #获取人格
         system_prompt = await self.get_persona_system_prompt(uid)
@@ -111,11 +111,11 @@ class Chat4severals_Plugin(Star):
         sys_msg = f"{system_prompt}"
         user_msg = UserMessageSegment(content=[TextPart(text=msg)])
         provider = self.context.get_using_provider()
-        logger.info(f"msg:{msg},\n history:{valid_history}")
+        logger.info(f"msg:{msg},\n history:{history}")
         llm_resp = await provider.text_chat(
                 prompt=msg,
                 session_id=None,
-                contexts=valid_history,
+                contexts=history,
                 image_urls=[],
                 func_tool=None,
                 system_prompt=sys_msg,
@@ -127,7 +127,7 @@ class Chat4severals_Plugin(Star):
                 content=[TextPart(text=llm_resp.completion_text)]
             ),
         )
-        message_chain = MessageChain().message(llm_resp.completion_text).file_image("path/to/image.jpg")
+        message_chain = MessageChain().message(llm_resp.completion_text)
         await self.context.send_message(event.unified_msg_origin, message_chain)
 
     async def get_persona_system_prompt(self, session: str) -> str:
