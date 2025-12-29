@@ -44,7 +44,7 @@ class Chat4severals_Plugin(Star):
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
     async def on_all_message(self, event: AstrMessageEvent):  
         session_key, state = self._get_session_state(event)
-
+        logger.info(f"原始信息:{event.raw_message}")
         logger.info(f"得到state:{state}")
         if state.is_listening:
             logger.info(
@@ -58,7 +58,7 @@ class Chat4severals_Plugin(Star):
             @session_waiter(timeout=timer, record_history_chains=False)
             async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
                 cur_msg = event.message_str
-                if cur_msg == "": #只收到一条信息的情况
+                if cur_msg == "": #只收到一条信息的情况以及"正在输入"的情况
                     event.stop_event()
                     return
                 # state.buffer.append(cur_msg)
