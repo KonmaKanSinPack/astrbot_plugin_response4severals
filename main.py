@@ -14,6 +14,13 @@ from astrbot.core.utils.session_waiter import (
 # from astrbot.api.event import MessageChain
 from astrbot.api import AstrBotConfig
 
+from astrbot.core.agent.message import (
+    AssistantMessageSegment,
+    UserMessageSegment,
+    TextPart,
+)
+
+from astrbot.core.conversation_mgr import Conversation
 
 @dataclass
 class _SessionState:
@@ -27,14 +34,14 @@ class Chat4severals_Plugin(Star):
         super().__init__(context)
         self.config = config
         self._session_states: Dict[str, _SessionState] = {}
+        self.context = context
         
 
     async def initialize(self):
         """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
 
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
-    async def on_all_message(self, event: AstrMessageEvent):
-        
+    async def on_all_message(self, event: AstrMessageEvent):  
         session_key = event.get_sender_name()
         state = self._session_states.get(session_key)
         if state is None:
@@ -69,7 +76,8 @@ class Chat4severals_Plugin(Star):
                 # collected = "\n".join(state.buffer)
                 collected = state.buffer
                 logger.info("Collected messages for %s: %s", session_key, collected)
-                event.message_str = collected
+                # event.message_str = collected
+                await self.send_prompt(event, collected)
                 state.buffer = ""
             except Exception as e:
                 yield event.plain_result("发生内部错误，请联系管理员: " + str(e))
@@ -77,9 +85,33 @@ class Chat4severals_Plugin(Star):
                 state.is_listening = False
                 if not state.buffer:
                     self._session_states.pop(session_key, None)
-                # event.stop_event()
+                event.stop_event()
         except Exception as e:
             yield event.plain_result("发生错误，请联系管理员: " + str(e))
+
+    async def send_prompt(self, event, msg):
+        umo = event.unified_msg_origin
+        provider_id = await self.context.get_current_chat_provider_id(umo)
+        logger.info(f"umo:{umo}")
+
+        uid = event.unified_msg_origin
+        conv_mgr = self.context.conversation_manager
+        curr_cid = await conv_mgr.get_curr_conversation_id(uid)
+        conversation = await conv_mgr.get_conversation(uid, curr_cid)  # Conversation
+        
+        curr_cid = await conv_mgr.get_curr_conversation_id(event.unified_msg_origin)
+        user_msg = UserMessageSegment(content=[TextPart(text=msg)])
+        llm_resp = await self.context.llm_generate(
+            chat_provider_id=provider_id, # 聊天模型 ID
+            contexts=[user_msg], # 当未指定 prompt 时，使用 contexts 作为输入；同时指定 prompt 和 contexts 时，prompt 会被添加到 LLM 输入的最后
+        )
+        await conv_mgr.add_message_pair(
+            cid=curr_cid,
+            user_message=user_msg,
+            assistant_message=AssistantMessageSegment(
+                content=[TextPart(text=llm_resp.completion_text)]
+            ),
+        )
 
 
     async def terminate(self):
