@@ -57,6 +57,7 @@ class Chat4severals_Plugin(Star):
         try:
             @session_waiter(timeout=timer, record_history_chains=False)
             async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
+                logger.info(f"内部原始信息:{event.message_obj.raw_message}")
                 cur_msg = event.message_str
                 if cur_msg == "": #只收到一条信息的情况以及"正在输入"的情况
                     event.stop_event()
