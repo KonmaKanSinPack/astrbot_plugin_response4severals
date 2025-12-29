@@ -97,6 +97,7 @@ class Chat4severals_Plugin(Star):
         conversation = await conv_mgr.get_conversation(uid, curr_cid)  # Conversation
         history = json.loads(conversation.history) if conversation and conversation.history else []
         # 验证历史记录格式
+        logger.info(f"原始历史记录:{history}")
         valid_history = []
         for item in history:
             if isinstance(item, dict) and "role" in item and "content" in item:
@@ -110,7 +111,7 @@ class Chat4severals_Plugin(Star):
         sys_msg = f"{system_prompt}"
         user_msg = UserMessageSegment(content=[TextPart(text=msg)])
         provider = self.context.get_using_provider()
-        logger.info(f"system_prompt:{system_prompt},\n msg:{msg},\n history:{valid_history}")
+        logger.info(f"msg:{msg},\n history:{valid_history}")
         llm_resp = await provider.text_chat(
                 prompt=msg,
                 session_id=None,
