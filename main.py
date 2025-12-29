@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import json
 from typing import Dict, List
 
 from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
@@ -90,21 +91,38 @@ class Chat4severals_Plugin(Star):
             yield event.plain_result("发生错误，请联系管理员: " + str(e))
 
     async def send_prompt(self, event, msg):
-        umo = event.unified_msg_origin
-        provider_id = await self.context.get_current_chat_provider_id(umo)
-        logger.info(f"umo:{umo}")
-
         uid = event.unified_msg_origin
+        provider_id = await self.context.get_current_chat_provider_id(uid)
+        logger.info(f"umo:{uid}")
+
+        #获取会话历史
         conv_mgr = self.context.conversation_manager
         curr_cid = await conv_mgr.get_curr_conversation_id(uid)
         conversation = await conv_mgr.get_conversation(uid, curr_cid)  # Conversation
-        
-        curr_cid = await conv_mgr.get_curr_conversation_id(event.unified_msg_origin)
+        history = json.loads(conversation.history) if conversation and conversation.history else []
+        # 验证历史记录格式
+        valid_history = []
+        for item in history:
+            if isinstance(item, dict) and "role" in item and "content" in item:
+                if isinstance(item["content"], str):
+                    valid_history.append(item)
+
+        #获取人格
+        system_prompt = await self.get_persona_system_prompt(uid)
+
+        #发送信息到llm
+        sys_msg = f"{system_prompt}"
         user_msg = UserMessageSegment(content=[TextPart(text=msg)])
-        llm_resp = await self.context.llm_generate(
-            chat_provider_id=provider_id, # 聊天模型 ID
-            contexts=[user_msg], # 当未指定 prompt 时，使用 contexts 作为输入；同时指定 prompt 和 contexts 时，prompt 会被添加到 LLM 输入的最后
-        )
+        provider = self.context.get_using_provider()
+        logger.info(f"system_prompt:{system_prompt},\n msg:{msg},\n history:{valid_history}")
+        llm_resp = await provider.text_chat(
+                prompt=msg,
+                session_id=None,
+                contexts=valid_history,
+                image_urls=[],
+                func_tool=None,
+                system_prompt=sys_msg,
+            )
         await conv_mgr.add_message_pair(
             cid=curr_cid,
             user_message=user_msg,
@@ -112,9 +130,62 @@ class Chat4severals_Plugin(Star):
                 content=[TextPart(text=llm_resp.completion_text)]
             ),
         )
-        logger.info(f"{conv_mgr}")
 
+    async def get_persona_system_prompt(self, session: str) -> str:
+        """获取人格系统提示词
 
+        Args:
+            session: 会话ID
+
+        Returns:
+            人格系统提示词
+        """
+        base_system_prompt = ""
+        try:
+            # 尝试获取当前会话的人格设置
+            uid = session  # session 就是 unified_msg_origin
+            curr_cid = await self.context.conversation_manager.get_curr_conversation_id(
+                uid
+            )
+
+            # 获取默认人格设置
+            default_persona_obj = self.context.provider_manager.selected_default_persona
+
+            if curr_cid:
+                conversation = await self.context.conversation_manager.get_conversation(
+                    uid, curr_cid
+                )
+
+                if (
+                    conversation
+                    and conversation.persona_id
+                    and conversation.persona_id != "[%None]"
+                ):
+                    # 有指定人格，尝试获取人格的系统提示词
+                    personas = self.context.provider_manager.personas
+                    if personas:
+                        for persona in personas:
+                            if (
+                                hasattr(persona, "name")
+                                and persona.name == conversation.persona_id
+                            ):
+                                base_system_prompt = getattr(persona, "prompt", "")
+                                
+                                break
+
+            # 如果没有获取到人格提示词，尝试使用默认人格
+            if (
+                not base_system_prompt
+                and default_persona_obj
+                and default_persona_obj.get("prompt")
+            ):
+                base_system_prompt = default_persona_obj["prompt"]
+                
+
+        except Exception as e:
+            logger.warning(f"获取人格系统提示词失败: {e}")
+
+        return base_system_prompt
 
     async def terminate(self):
         """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
