@@ -112,6 +112,8 @@ class Chat4severals_Plugin(Star):
                 content=[TextPart(text=llm_resp.completion_text)]
             ),
         )
+        logger.info(f"{conv_mgr}")
+
 
 
     async def terminate(self):
