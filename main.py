@@ -76,6 +76,7 @@ class Chat4severals_Plugin(Star):
                 # event.message_str = collected
                 await self.send_prompt(event, collected)
                 state.buffer = ""
+                event.stop_event()
             except Exception as e:
                 yield event.plain_result("发生内部错误，请联系管理员: " + str(e))
             finally:
