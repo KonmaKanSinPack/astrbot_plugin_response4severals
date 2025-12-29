@@ -61,14 +61,18 @@ class Chat4severals_Plugin(Star):
             @session_waiter(timeout=timer, record_history_chains=False)
             async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
                 logger.info(f"内部原始信息:{event.message_obj.raw_message}")
-                cur_msg = event.message_str
-                if cur_msg == "": #只收到一条信息的情况
-                    event.stop_event()
-                    return
-                # state.buffer.append(cur_msg)
-                state.buffer = state.buffer + f"{cur_msg}\n"
-                logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
-                controller.keep(timeout=timer, reset_timeout=True)
+                if event.message_obj.raw_message['sub_type'] == 'input_status':
+                    logger.info("正在输入状态，继续等待消息。")
+                    controller.keep(timeout=timer, reset_timeout=True)
+                else:    
+                    cur_msg = event.message_str
+                    if cur_msg == "": #只收到一条信息的情况
+                        event.stop_event()
+                        return
+                    # state.buffer.append(cur_msg)
+                    state.buffer = state.buffer + f"{cur_msg}\n"
+                    logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
+                    controller.keep(timeout=timer, reset_timeout=True)
                 
             try:
                 state.buffer = event.message_str  # 或 append 到列表
@@ -117,7 +121,7 @@ class Chat4severals_Plugin(Star):
         sys_msg = f"{system_prompt}"
         user_msg = UserMessageSegment(content=[TextPart(text=msg)])
         provider = self.context.get_using_provider()
-        logger.info(f"msg:{msg},\n history:{history}")
+        # logger.info(f"msg:{msg},\n history:{history}")
         llm_resp = await provider.text_chat(
                 prompt=msg,
                 session_id=None,
