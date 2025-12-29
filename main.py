@@ -43,58 +43,56 @@ class Chat4severals_Plugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
     async def on_all_message(self, event: AstrMessageEvent):  
-        if event.message_obj.raw_message['sub_type'] == 'input_status':
-                logger.info("正在输入状态，继续等待消息。")
+        if not event.message_obj.raw_message['sub_type'] == 'input_status':
+            session_key, state = self._get_session_state(event)
+            logger.info(f"原始信息:{event.message_obj.raw_message}")
+            logger.info(f"得到state:{state}")
+            if state.is_listening:
+                logger.info(
+                    "会话 %s 正在收集消息，忽略并发请求。",
+                    session_key,
+                )
                 return
-        session_key, state = self._get_session_state(event)
-        logger.info(f"原始信息:{event.message_obj.raw_message}")
-        logger.info(f"得到state:{state}")
-        if state.is_listening:
-            logger.info(
-                "会话 %s 正在收集消息，忽略并发请求。",
-                session_key,
-            )
-            return
-        timer = self.config.get("timer", 4.0)
-        state.is_listening = True
-        try:
-            @session_waiter(timeout=timer, record_history_chains=False)
-            async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
-                logger.info(f"内部原始信息:{event.message_obj.raw_message}")
-                if event.message_obj.raw_message['sub_type'] == 'input_status':
-                    logger.info("正在输入状态，继续等待消息。")
-                    controller.keep(timeout=timer, reset_timeout=True)
-                else:    
-                    cur_msg = event.message_str
-                    if cur_msg == "": #只收到一条信息的情况
-                        event.stop_event()
-                        return
-                    # state.buffer.append(cur_msg)
-                    state.buffer = state.buffer + f"{cur_msg}\n"
-                    logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
-                    controller.keep(timeout=timer, reset_timeout=True)
-                
+            timer = self.config.get("timer", 4.0)
+            state.is_listening = True
             try:
-                state.buffer = event.message_str  # 或 append 到列表
-                await wait_for_response(event)
-            except TimeoutError:
-                logger.info("No more messages received within timeout.")
-                # collected = "\n".join(state.buffer)
-                collected = state.buffer
-                logger.info("Collected messages for %s: %s", session_key, collected)
-                # event.message_str = collected
-                await self.send_prompt(event, collected)
-                state.buffer = ""
-                event.stop_event()
+                @session_waiter(timeout=timer, record_history_chains=False)
+                async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
+                    logger.info(f"内部原始信息:{event.message_obj.raw_message}")
+                    if event.message_obj.raw_message['sub_type'] == 'input_status':
+                        logger.info("正在内部输入状态，继续等待消息。")
+                        controller.keep(timeout=timer, reset_timeout=True)
+                    else:    
+                        cur_msg = event.message_str
+                        if cur_msg == "": #只收到一条信息的情况
+                            event.stop_event()
+                            return
+                        # state.buffer.append(cur_msg)
+                        state.buffer = state.buffer + f"{cur_msg}\n"
+                        logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
+                        controller.keep(timeout=timer, reset_timeout=True)
+                    
+                try:
+                    state.buffer = event.message_str  # 或 append 到列表
+                    await wait_for_response(event)
+                except TimeoutError:
+                    logger.info("No more messages received within timeout.")
+                    # collected = "\n".join(state.buffer)
+                    collected = state.buffer
+                    logger.info("Collected messages for %s: %s", session_key, collected)
+                    # event.message_str = collected
+                    await self.send_prompt(event, collected)
+                    state.buffer = ""
+                    event.stop_event()
+                except Exception as e:
+                    yield event.plain_result("发生内部错误，请联系管理员: " + str(e))
+                finally:
+                    state.is_listening = False
+                    if not state.buffer:
+                        self._session_states.pop(session_key, None)
+                    event.stop_event()
             except Exception as e:
-                yield event.plain_result("发生内部错误，请联系管理员: " + str(e))
-            finally:
-                state.is_listening = False
-                if not state.buffer:
-                    self._session_states.pop(session_key, None)
-                event.stop_event()
-        except Exception as e:
-            yield event.plain_result("发生错误，请联系管理员: " + str(e))
+                yield event.plain_result("发生错误，请联系管理员: " + str(e))
 
     async def send_prompt(self, event, msg):
         uid = event.unified_msg_origin
