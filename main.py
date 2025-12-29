@@ -22,7 +22,7 @@ from astrbot.core.agent.message import (
 )
 
 from astrbot.core.conversation_mgr import Conversation
-
+from astrbot.api.event import MessageChain
 @dataclass
 class _SessionState:
     is_listening: bool = False
@@ -43,11 +43,7 @@ class Chat4severals_Plugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
     async def on_all_message(self, event: AstrMessageEvent):  
-        session_key = event.get_sender_name()
-        state = self._session_states.get(session_key)
-        if state is None:
-            state = _SessionState()
-            self._session_states[session_key] = state
+        session_key, state = self._get_session_state(event)
 
         logger.info(f"得到state:{state}")
         if state.is_listening:
@@ -65,7 +61,7 @@ class Chat4severals_Plugin(Star):
                 if cur_msg == "": #只收到一条信息的情况
                     return
                 # state.buffer.append(cur_msg)
-                state.buffer = state.buffer + f"\n{cur_msg}"
+                state.buffer = state.buffer + f"{cur_msg}\n"
                 logger.info("会话 %s 收集到消息: %s", session_key, state.buffer)
                 controller.keep(timeout=timer, reset_timeout=True)
                 
@@ -130,6 +126,8 @@ class Chat4severals_Plugin(Star):
                 content=[TextPart(text=llm_resp.completion_text)]
             ),
         )
+        message_chain = MessageChain().message(llm_resp.completion_text).file_image("path/to/image.jpg")
+        await self.context.send_message(event.unified_msg_origin, message_chain)
 
     async def get_persona_system_prompt(self, session: str) -> str:
         """获取人格系统提示词
@@ -192,7 +190,7 @@ class Chat4severals_Plugin(Star):
 
     def _get_session_state(self, event: AstrMessageEvent):
         """确保每个用户会话拥有独立的缓存状态。"""
-        session_key = event.get_sender_name()
+        session_key = event.unified_msg_origin
         state = self._session_states.get(session_key)
         if state is None:
             state = _SessionState()
