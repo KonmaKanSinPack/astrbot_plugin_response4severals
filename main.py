@@ -59,6 +59,7 @@ class Chat4severals_Plugin(Star):
             async def wait_for_response(controller: SessionController, event: AstrMessageEvent):
                 cur_msg = event.message_str
                 if cur_msg == "": #只收到一条信息的情况
+                    event.stop_event()
                     return
                 # state.buffer.append(cur_msg)
                 state.buffer = state.buffer + f"{cur_msg}\n"
