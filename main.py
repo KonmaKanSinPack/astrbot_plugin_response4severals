@@ -44,7 +44,7 @@ class Chat4severals_Plugin(Star):
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
     async def on_all_message(self, event: AstrMessageEvent):  
         session_key, state = self._get_session_state(event)
-        logger.info(f"原始信息:{event.raw_message}")
+        logger.info(f"原始信息:{event.message_obj.raw_message}")
         logger.info(f"得到state:{state}")
         if state.is_listening:
             logger.info(
